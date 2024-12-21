@@ -5,13 +5,43 @@
 --%>
 
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.Connection" %>
+<%@ page import="java.sql.PreparedStatement" %>
+<%@ page import="java.sql.ResultSet" %>
+<%@ page import="java.sql.SQLException" %>
+
 <!DOCTYPE html>
-<html>
-    <head>
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-        <title>JSP Page</title>
-    </head>
-    <body>
-        <h1>Hello World!</h1>
-    </body>
-</html>
+<jsp:include page="includes/header.jsp"/>
+<%@include file="conexion.jsp"%>
+
+
+<%
+    String nombre = request.getParameter("nombre");
+    String contrasena = request.getParameter("contrasena");
+
+    if (nombre != null && contrasena != null) {
+        try {
+            // Consulta para verificar el nombre y contraseña
+            String query = "SELECT * FROM Supervisores WHERE Nombre = ? AND Contraseña = ?";
+            PreparedStatement ps = conexion.prepareStatement(query);
+            ps.setString(1, nombre);
+            ps.setString(2, contrasena);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                // Si las credenciales son correctas
+                session.setAttribute("adminNombre", rs.getString("Nombre"));
+                response.sendRedirect("panelAdministrador.jsp");
+            } else {
+                // Si las credenciales son incorrectas
+                out.println("<p style='color:red; text-align:center;'>Nombre o contraseña incorrectos.</p>");
+            }
+        } catch (SQLException e) {
+            out.println("<p style='color:red;'>Error de base de datos: " + e.getMessage() + "</p>");
+        }
+    } else {
+        out.println("<p style='color:red; text-align:center;'>Por favor, completa todos los campos.</p>");
+    }
+%>
+
+<jsp:include page="includes/footer.jsp"/>
