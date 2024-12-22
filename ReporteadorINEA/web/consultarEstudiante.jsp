@@ -7,167 +7,159 @@
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <!DOCTYPE html>
 <%@ page import="java.sql.Connection" %>
-<%@ page import="java.sql.DriverManager" %>
 <%@ page import="java.sql.PreparedStatement" %>
 <%@ page import="java.sql.ResultSet" %>
 <%@ page import="java.sql.SQLException" %>
-<jsp:include page="includes/header.jsp"/>
+<%@page import="Utilidades.utilidades"%>
+
+
+
+
+
+
 <%@include file="conexion.jsp"%>
 
 
+<title>Progreso del Estudiante</title>
 <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f4f8fc;
-            margin: 0;
-            padding: 20px;
-        }
+    body {
+        font-family: 'Arial', sans-serif;
+        background-color: #f4f8fc;
+        margin: 0;
+        padding: 0;
+    }
 
-        .container {
-            max-width: 800px;
-            margin: auto;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-        }
+    header {
+        background-color: #004aad;
+        color: white;
+        padding: 20px;
+        text-align: center;
+    }
 
-        h2 {
-            text-align: center;
-            color: #004aad;
-            margin-bottom: 30px;
-        }
+    main {
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 20px;
+        background-color: #ffffff;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
 
-        .info {
-            text-align: center;
-            margin-bottom: 20px;
-        }
+    h1, h2 {
+        text-align: center;
+        color: #004aad;
+    }
 
-        .info p {
-            font-size: 18px;
-            line-height: 1.6;
-            color: #333;
-        }
+    p {
+        font-size: 18px;
+        color: #333;
+    }
 
-        .progress-container {
-            margin: 20px 0;
-            text-align: center;
-        }
+    .progreso-bar {
+        background-color: #ddd;
+        border-radius: 10px;
+        overflow: hidden;
+        height: 30px;
+        margin: 20px 0;
+    }
 
-        .progress-bar {
-            width: 100%;
-            background: #e0e0e0;
-            border-radius: 10px;
-            overflow: hidden;
-            height: 30px;
-        }
+    .progreso-bar-inner {
+        height: 100%;
+        background-color: #004aad;
+        color: white;
+        line-height: 30px;
+        text-align: center;
+    }
 
-        .progress-bar div {
-            height: 100%;
-            background: #28a745;
-            width: 0; /* Se ajustará dinámicamente */
-            transition: width 0.3s ease-in-out;
-        }
+    button {
+        padding: 10px;
+        background-color: #004aad;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        margin: 10px;
+    }
 
-        .buttons {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-top: 20px;
-        }
+    button:hover {
+        background-color: #002e75;
+    }
+</style>
 
-        button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s ease;
-        }
+  <%
+    String idEstudiante = request.getParameter("idEstudiante");
 
-        button:hover {
-            opacity: 0.9;
-        }
+    if (idEstudiante == null || idEstudiante.isEmpty()) {
+        out.println("<p style='color:red;'>Error: No se proporcionó un ID de estudiante válido.</p>");
+    } else {
+        try {
+            int id = Integer.parseInt(idEstudiante);
 
-        .btn-back {
-            background-color: #007bff;
-            color: white;
-        }
+            // Consulta para obtener información básica del estudiante
+            PreparedStatement ps = conexion.prepareStatement("SELECT * FROM Estudiantes WHERE ID_Estudiante = ?");
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
 
-        .btn-back:hover {
-            background-color: #0056b3;
-        }
+            if (rs.next()) {
+                String nombreEstudiante = rs.getString("Nombre") + " " + rs.getString("Apellido");
+                float horasRequeridas = rs.getFloat("Horas_Requeridas");
 
-        .btn-complete {
-            background-color: #28a745;
-            color: white;
-        }
+                // Consulta para calcular las horas completadas desde la tabla RegistroHoras
+                PreparedStatement psHoras = conexion.prepareStatement(
+                    "SELECT SUM(TIMESTAMPDIFF(MINUTE, Hora_Entrada, Hora_Salida)) AS MinutosCompletados " +
+                    "FROM RegistroHoras WHERE ID_Estudiante = ? AND Hora_Salida IS NOT NULL");
+                psHoras.setInt(1, id);
+                ResultSet rsHoras = psHoras.executeQuery();
 
-        .btn-complete:hover {
-            background-color: #1c7430;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 40px;
-            color: #666;
-            font-size: 14px;
-        }
-    </style>
-<div class="container">
-        <h2>Progreso del Estudiante</h2>
-        <% 
-            String idEstudiante = request.getParameter("idEstudiante");
-            if (idEstudiante != null && !idEstudiante.isEmpty()) {
-                try {
-                    PreparedStatement ps = conexion.prepareStatement("SELECT * FROM Estudiantes WHERE ID_Estudiante = ?");
-                    ps.setString(1, idEstudiante);
-                    ResultSet rs = ps.executeQuery();
-
-                    if (rs.next()) {
-                        String nombre = rs.getString("Nombre");
-                        String apellido = rs.getString("Apellido");
-                        float horasRequeridas = rs.getFloat("Horas_Requeridas");
-                        float horasCompletadas = rs.getFloat("Horas_Completadas");
-                        float horasFaltantes = horasRequeridas - horasCompletadas;
-                        int progreso = (int) ((horasCompletadas / horasRequeridas) * 100);
-        %>
-        <p><strong>Nombre:</strong> <%= nombre %> <%= apellido %></p>
-        <p><strong>Horas Requeridas:</strong> <%= horasRequeridas %></p>
-        <p><strong>Horas Completadas:</strong> <%= horasCompletadas %></p>
-        <p><strong>Horas Faltantes:</strong> <%= horasFaltantes %></p>
-
-        <div class="progress-container">
-            <div class="progress-bar">
-                <div style="width: <%= progreso %>%;"></div>
-            </div>
-            <p><%= progreso %>% Completado</p>
-        </div>
-
-        <div class="buttons">
-            <form action="panelAdministrador.jsp">
-                <button type="submit">Regresar</button>
-            </form>
-            <form action="actualizarHoras.jsp" method="POST">
-                <input type="hidden" name="idEstudiante" value="<%= idEstudiante %>">
-                <input type="number" name="horas" placeholder="Horas a registrar" required>
-                <button type="submit">Horas Completadas</button>
-            </form>
-        </div>
-        <% 
-                    } else {
-                        out.println("<p>No se encontró información del estudiante.</p>");
-                    }
-                } catch (SQLException e) {
-                    out.println("<p>Error al consultar la base de datos: " + e.getMessage() + "</p>");
+                float horasCompletadas = 0;
+                if (rsHoras.next()) {
+                    int minutosCompletados = rsHoras.getInt("MinutosCompletados");
+                    horasCompletadas = minutosCompletados / 60.0f; // Convertir minutos a horas
                 }
+
+                // Calcular horas faltantes
+                float horasFaltantes = horasRequeridas - horasCompletadas;
+                if (horasFaltantes < 0) horasFaltantes = 0; // Evitar valores negativos
+
+                int progreso = 0; // Definir progreso inicial
+                if (horasRequeridas > 0) {
+                    progreso = (int)((horasCompletadas / horasRequeridas) * 100); // Calcular solo si horasRequeridas > 0
+                }
+
+                // Mostrar datos en la página
+%>
+                <header>
+                    <h1>Progreso del Estudiante</h1>
+                </header>
+                <main>
+                    <<h2>Nombre: <%= nombreEstudiante %></h2>
+                            <p><strong>Horas Requeridas:</strong> <%= Utilidades.utilidades.formatoHoras(horasRequeridas) %></p>
+                            <p><strong>Horas Completadas:</strong> <%= Utilidades.utilidades.formatoHoras(horasCompletadas) %></p>
+                            <p><strong>Horas Faltantes:</strong> <%= Utilidades.utilidades.formatoHoras(horasFaltantes) %></p>
+
+                    <p><strong><%= progreso %>% Completado</strong></p>
+                    <div class="progreso-bar">
+                        <div class="progreso-bar-inner" style="width: <%= progreso %>%;">
+                            <%= progreso %>%
+                        </div>
+                    </div>
+                    <form action="panelAdministrador.jsp" method="get" style="text-align: center;">
+                        <button type="submit">Regresar</button>
+                    </form>
+                </main>
+<%
             } else {
-                out.println("<p>ID del estudiante no proporcionado.</p>");
+                out.println("<p style='color:red;'>Error: No se encontró un estudiante con el ID proporcionado.</p>");
             }
-        %>
-    </div>
-
-
+        } catch (NumberFormatException e) {
+            out.println("<p style='color:red;'>Error: ID de estudiante inválido.</p>");
+        } catch (SQLException e) {
+            out.println("<p style='color:red;'>Error al consultar la base de datos: " + e.getMessage() + "</p>");
+        }
+    }
+%>
 
 
 
