@@ -103,6 +103,16 @@
     }
 </style>
 
+<script>
+    // Función para mostrar un mensaje de confirmación antes de eliminar
+    function confirmarEliminacion(event) {
+        const confirmado = confirm("¿Estás seguro de que deseas eliminar este estudiante? Esta acción no se puede deshacer.");
+        if (!confirmado) {
+            event.preventDefault(); // Cancela el envío del formulario si no se confirma
+        }
+    }
+</script>
+
 <h1>Panel del Administrador</h1>
 <p>Bienvenido, <%= adminNombre %></p>
 
@@ -149,9 +159,13 @@
             <td><%= rs.getFloat("Horas_Requeridas") %></td>
             <td><%= horasCompletadasFormato %> horas</td> <!-- Horas completadas en formato HH:mm -->
             <td>
-                <form action="consultarEstudiante.jsp" method="POST">
+                <form action="consultarEstudiante.jsp" method="POST" style="display: inline;">
                     <input type="hidden" name="idEstudiante" value="<%= rs.getInt("ID_Estudiante") %>">
                     <button type="submit">Consultar</button>
+                </form>
+                <form action="eliminarEstudiante.jsp" method="POST" style="display: inline;" onsubmit="confirmarEliminacion(event)">
+                    <input type="hidden" name="idEstudiante" value="<%= rs.getInt("ID_Estudiante") %>">
+                    <button type="submit" style="background-color: #cc0000;">Eliminar</button>
                 </form>
             </td>
         </tr>
@@ -165,8 +179,7 @@
 
     <div class="buttons">
         <button><a href="agregarEstudiante.jsp">Agregar Estudiante</a></button>
-        <button><a href="eliminarEstudiante.jsp">Eliminar Estudiante</a></button>
-        <button><a href="logout.jsp">Cerrar Sesión</a></button>
+        <button><a href="index.jsp">Cerrar Sesión</a></button>
     </div>
 </main>
 
